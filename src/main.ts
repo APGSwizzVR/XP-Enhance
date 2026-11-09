@@ -1,256 +1,46 @@
 import { invoke } from "@tauri-apps/api/core";
 import "./style.css";
-
-type Features = {
-  colour: boolean;
-  sharpening: boolean;
-  ambient_occlusion: boolean;
-  bloom: boolean;
-  cloud_enhancement: boolean;
-  anti_aliasing: boolean;
-  depth_of_field: boolean;
-};
-
-type Settings = {
-  preset: string;
-  realism: number;
-  xplane_path: string | null;
-  reshade_ini: string | null;
-  features: Features;
-};
-
-const defaults: Settings = {
-  preset: "Balanced",
-  realism: 65,
-  xplane_path: null,
-  reshade_ini: null,
-  features: {
-    colour: true,
-    sharpening: true,
-    ambient_occlusion: false,
-    bloom: false,
-    cloud_enhancement: true,
-    anti_aliasing: true,
-    depth_of_field: false
-  }
-};
-
-let settings: Settings = structuredClone(defaults);
-let activePage = "Dashboard";
-let saveTimer: number | undefined;
-
-const pages = ["Dashboard", "Visual Settings", "Presets", "ReShade", "Weather", "Scenery", "Community Addons", "Installed Addons", "Performance", "Settings"];
-const icons: Record<string, string> = {
-  Dashboard: "▦", "Visual Settings": "◈", Presets: "◫", ReShade: "◉",
-  Weather: "☁", Scenery: "⌁", "Community Addons": "＋",
-  "Installed Addons": "▤", Performance: "⌁", Settings: "⚙"
-};
-
-const app = document.querySelector<HTMLDivElement>("#app")!;
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char] ?? char));
-}
-
-function queueSave(): void {
-  window.clearTimeout(saveTimer);
-  saveTimer = window.setTimeout(async () => {
-    try {
-      await invoke("save_settings", { settings });
-      setStatus("All changes saved");
-    } catch (error) {
-      setStatus("Could not save settings: " + String(error));
-    }
-  }, 250);
-}
-
-function setStatus(message: string): void {
-  const status = document.querySelector<HTMLElement>("#save-status");
-  if (status) status.textContent = message;
-}
-
-function featureRow(key: keyof Features, title: string, description: string): string {
-  const enabled = settings.features[key];
-  return `<div class="feature-row">
-    <div class="feature-copy"><strong>${title}</strong><span>${description}</span></div>
-    <button class="switch ${enabled ? "on" : ""}" data-feature="${key}" role="switch" aria-checked="${enabled}" aria-label="Toggle ${title}"><span></span></button>
-  </div>`;
-}
-
-function dashboard(): string {
-  const enabledCount = Object.values(settings.features).filter(Boolean).length;
-  return `<section class="welcome">
-    <div><div class="eyebrow">FLIGHT EXPERIENCE CONTROL</div><h1>Good to have you here.</h1><p>Configure your X-Plane 12 visual experience from one place.</p></div>
-    <div class="status-pill"><i></i> App ready</div>
-  </section>
-  <section class="stat-grid">
-    <article class="stat-card"><span>ACTIVE PRESET</span><strong>${escapeHtml(settings.preset)}</strong><small>Current visual profile</small></article>
-    <article class="stat-card"><span>REALISM LEVEL</span><strong>${settings.realism}<em>/100</em></strong><small>Overall enhancement intensity</small></article>
-    <article class="stat-card"><span>FEATURES ENABLED</span><strong>${enabledCount}<em>/7</em></strong><small>Configured enhancement options</small></article>
-  </section>
-  <section class="content-grid">
-    <article class="panel"><div class="panel-heading"><div><div class="eyebrow">QUICK CONTROL</div><h2>Realism intensity</h2></div><span class="value-chip">${settings.realism}%</span></div>
-      <p class="muted">Adjust the overall strength of your visual profile.</p>
-      <input class="range" id="realism-range" type="range" min="0" max="100" value="${settings.realism}" />
-      <div class="range-labels"><span>Subtle</span><span>Balanced</span><span>Maximum</span></div>
-      <div class="panel-footer"><span>Changes are stored locally</span><button class="text-button" data-page="Visual Settings">Open visual settings →</button></div>
-    </article>
-    <article class="panel"><div class="panel-heading"><div><div class="eyebrow">YOUR SETUP</div><h2>X-Plane connection</h2></div><span class="status-dot"></span></div>
-      <div class="connection-line"><span class="connection-icon">XP</span><div><strong>${settings.xplane_path ? "Folder configured" : "Not configured"}</strong><small>${settings.xplane_path ? escapeHtml(settings.xplane_path) : "Set your simulator folder in Settings"}</small></div></div>
-      <div class="panel-footer"><span>Simulator integration status</span><button class="text-button" data-page="Settings">Configure →</button></div>
-    </article>
-  </section>
-  <section class="panel feature-panel"><div class="panel-heading"><div><div class="eyebrow">ACTIVE CONFIGURATION</div><h2>Visual features</h2></div><button class="text-button" data-page="Visual Settings">Manage features →</button></div>
-    <div class="feature-grid">
-      ${featureRow("colour", "Colour enhancement", "Colour and tone adjustments")}
-      ${featureRow("sharpening", "Image sharpening", "Improve perceived image clarity")}
-      ${featureRow("ambient_occlusion", "Ambient occlusion", "Additional contact shading")}
-      ${featureRow("bloom", "Bloom", "Bright-light glow effect")}
-      ${featureRow("cloud_enhancement", "Cloud enhancement", "Cloud visual profile")}
-      ${featureRow("anti_aliasing", "Anti-aliasing", "Reduce visible edge aliasing")}
-    </div>
-  </section>`;
-}
-
-function visualSettings(): string {
-  return `<div class="page-intro"><div class="eyebrow">CONFIGURATION</div><h1>Visual Settings</h1><p>Fine-tune your visual profile and feature preferences.</p></div>
-  <section class="panel"><div class="panel-heading"><div><h2>Realism intensity</h2><p class="muted">A profile strength setting for your enhancement configuration.</p></div><span class="value-chip">${settings.realism}%</span></div>
-    <input class="range" id="realism-range" type="range" min="0" max="100" value="${settings.realism}" /><div class="range-labels"><span>Subtle</span><span>Balanced</span><span>Maximum</span></div>
-  </section>
-  <section class="panel feature-panel"><div class="panel-heading"><div><h2>Enhancement features</h2><p class="muted">Enable or disable individual options.</p></div></div>
-    ${featureRow("colour", "Colour enhancement", "Colour grading and tone adjustments")}
-    ${featureRow("sharpening", "Image sharpening", "Improve perceived image clarity")}
-    ${featureRow("ambient_occlusion", "Ambient occlusion", "Additional contact shading")}
-    ${featureRow("bloom", "Bloom", "Bright-light glow effect")}
-    ${featureRow("cloud_enhancement", "Cloud enhancement", "Cloud visual profile options")}
-    ${featureRow("anti_aliasing", "Anti-aliasing", "Reduce visible edge aliasing")}
-    ${featureRow("depth_of_field", "Depth of field", "Camera focus effect")}
-  </section>
-  <p class="notice">These settings currently save as an XP Enhance profile. Applying effects to X-Plane's live renderer is a separate integration task.</p>`;
-}
-
-function presets(): string {
-  const options = [
-    ["Performance", "Prioritise frame rate and lower visual overhead.", "Low"],
-    ["Balanced", "A general-purpose profile for everyday flying.", "Medium"],
-    ["Realistic", "A stronger visual profile for immersive flights.", "High"],
-    ["Cinematic", "A more pronounced profile for screenshots and video.", "Very high"]
-  ];
-  return `<div class="page-intro"><div class="eyebrow">PROFILES</div><h1>Presets</h1><p>Choose a starting point for your visual configuration.</p></div>
-  <div class="preset-grid">${options.map(([name,desc,load]) => `<button class="preset-card ${settings.preset === name ? "selected" : ""}" data-preset="${name}">
-    <span class="preset-mark">${settings.preset === name ? "✓" : "◈"}</span><strong>${name}</strong><p>${desc}</p><small>INTENSITY · ${load}</small><span class="preset-action">${settings.preset === name ? "CURRENT PRESET" : "SELECT PRESET →"}</span>
-  </button>`).join("")}</div>`;
-}
-
-function reshade(): string {
-  return `<div class="page-intro"><div class="eyebrow">COMPATIBILITY</div><h1>ReShade</h1><p>Import and keep a ReShade configuration alongside your XP Enhance profile.</p></div>
-  <section class="panel"><div class="eyebrow">INI CONFIGURATION</div><h2>Import ReShade preset</h2><p class="muted">Select a ReShade .ini file. XP Enhance will store a copy of its contents in your local settings.</p>
-    <label class="file-drop"><span class="file-icon">＋</span><strong>Choose a ReShade .ini file</strong><small>Browse your computer · .ini files only</small><input type="file" id="reshade-file" accept=".ini,text/plain" /></label>
-    <div class="import-state">${settings.reshade_ini ? '<span class="status-pill"><i></i> INI imported and saved</span>' : '<span class="muted">No INI file imported</span>'}</div>
-  </section>
-  <p class="notice">Import and storage are implemented. Loading ReShade shaders into X-Plane and translating individual shader parameters are not implemented yet.</p>`;
-}
-
-function settingsPage(): string {
-  return `<div class="page-intro"><div class="eyebrow">APPLICATION</div><h1>Settings</h1><p>Configure XP Enhance and your simulator location.</p></div>
-  <section class="panel"><h2>X-Plane 12 installation</h2><p class="muted">Enter the folder containing your X-Plane.exe file.</p>
-    <label class="field-label" for="xplane-path">Simulator folder path</label><input class="text-input" id="xplane-path" placeholder="e.g. D:\\X-Plane 12" value="${escapeHtml(settings.xplane_path ?? "")}" />
-    <div class="panel-footer"><span>Saved locally on this PC</span><button class="primary-button" id="save-path">Save folder</button></div>
-  </section>
-  <section class="panel"><h2>Application information</h2><div class="info-row"><span>Application</span><strong>XP Enhance</strong></div><div class="info-row"><span>Version</span><strong>0.2.0 · Rust / Tauri 2</strong></div><div class="info-row"><span>Settings storage</span><strong>Local JSON configuration</strong></div></section>`;
-}
-
-function simplePage(name: string): string {
-  const descriptions: Record<string, string> = {
-    Weather: "Weather profile controls and simulator weather integration.",
-    Scenery: "Manage scenery locations and visual environment options.",
-    "Community Addons": "Discover and install community enhancements.",
-    "Installed Addons": "View and manage your installed simulator add-ons.",
-    Performance: "Monitor and tune simulator performance settings."
-  };
-  return `<div class="page-intro"><div class="eyebrow">XP ENHANCE</div><h1>${name}</h1><p>${descriptions[name] ?? "Manage your XP Enhance configuration."}</p></div>
-  <section class="panel empty-state"><div class="empty-symbol">◈</div><h2>This section is being built</h2><p class="muted">The Rust desktop foundation is in place. This module will be connected to X-Plane in a later development step.</p></section>`;
-}
-
-function render(): void {
-  const body = activePage === "Dashboard" ? dashboard()
-    : activePage === "Visual Settings" ? visualSettings()
-    : activePage === "Presets" ? presets()
-    : activePage === "ReShade" ? reshade()
-    : activePage === "Settings" ? settingsPage()
-    : simplePage(activePage);
-
-  app.innerHTML = `<div class="shell">
-    <aside class="sidebar">
-      <div class="brand"><div class="brand-icon">X</div><div><strong>XP ENHANCE</strong><small>FLIGHT VISUAL CONTROL</small></div></div>
-      <div class="nav-label">WORKSPACE</div>
-      <nav>${pages.map(page => `<button class="nav-item ${activePage === page ? "active" : ""}" data-page="${page}"><span class="nav-icon">${icons[page]}</span>${page}</button>`).join("")}</nav>
-      <div class="sidebar-bottom"><div class="sidebar-version">VERSION 0.2.0</div><div class="sidebar-status"><i></i> Desktop app ready</div></div>
-    </aside>
-    <main class="main-area">
-      <header class="topbar"><div><span class="crumb">XP ENHANCE</span><span class="crumb-separator">/</span><strong>${activePage.toUpperCase()}</strong></div><div class="topbar-right"><span id="save-status">Local settings</span><span class="user-chip">XP</span></div></header>
-      <div class="page-content">${body}</div>
-      <footer class="footer"><span>XP ENHANCE <b>·</b> X-PLANE 12 TOOLKIT</span><span id="footer-state">Settings stored locally</span></footer>
-    </main>
-  </div>`;
-
-  app.querySelectorAll<HTMLElement>("[data-page]").forEach(el => el.addEventListener("click", () => {
-    activePage = el.dataset.page ?? "Dashboard";
-    render();
-  }));
-  app.querySelectorAll<HTMLButtonElement>("[data-feature]").forEach(el => el.addEventListener("click", () => {
-    const key = el.dataset.feature as keyof Features;
-    settings.features[key] = !settings.features[key];
-    render();
-    queueSave();
-  }));
-  app.querySelectorAll<HTMLButtonElement>("[data-preset]").forEach(el => el.addEventListener("click", () => {
-    const preset = el.dataset.preset ?? "Balanced";
-    settings.preset = preset;
-    const profiles: Record<string, { realism: number; features: Features }> = {
-      Performance: { realism: 30, features: { colour: true, sharpening: false, ambient_occlusion: false, bloom: false, cloud_enhancement: false, anti_aliasing: true, depth_of_field: false } },
-      Balanced: { realism: 65, features: { colour: true, sharpening: true, ambient_occlusion: false, bloom: false, cloud_enhancement: true, anti_aliasing: true, depth_of_field: false } },
-      Realistic: { realism: 82, features: { colour: true, sharpening: true, ambient_occlusion: true, bloom: false, cloud_enhancement: true, anti_aliasing: true, depth_of_field: false } },
-      Cinematic: { realism: 95, features: { colour: true, sharpening: true, ambient_occlusion: true, bloom: true, cloud_enhancement: true, anti_aliasing: true, depth_of_field: true } }
-    };
-    settings.realism = profiles[preset].realism;
-    settings.features = { ...profiles[preset].features };
-    render();
-    queueSave();
-  }));
-  app.querySelector<HTMLInputElement>("#realism-range")?.addEventListener("input", event => {
-    settings.realism = Number((event.currentTarget as HTMLInputElement).value);
-    const chip = app.querySelector(".value-chip");
-    if (chip) chip.textContent = settings.realism + "%";
-    queueSave();
-  });
-  app.querySelector<HTMLButtonElement>("#save-path")?.addEventListener("click", () => {
-    const input = app.querySelector<HTMLInputElement>("#xplane-path");
-    settings.xplane_path = input?.value.trim() || null;
-    queueSave();
-    render();
-  });
-  app.querySelector<HTMLInputElement>("#reshade-file")?.addEventListener("change", async event => {
-    const file = (event.currentTarget as HTMLInputElement).files?.[0];
-    if (!file) return;
-    try {
-      settings.reshade_ini = await file.text();
-      queueSave();
-      render();
-    } catch {
-      setStatus("Could not read the selected INI file");
-    }
-  });
-}
-
-async function start(): Promise<void> {
-  try {
-    settings = await invoke<Settings>("get_settings");
-  } catch (error) {
-    console.error("Unable to load settings", error);
-    settings = structuredClone(defaults);
-  }
-  render();
-}
-
+type K="colour"|"sharpening"|"ambient_occlusion"|"bloom"|"cloud_enhancement"|"anti_aliasing"|"depth_of_field"|"water_reflections"|"night_lighting"|"terrain_detail";
+type S={preset:string;realism:number;xplane_path:string|null;reshade_ini:string|null;features:Record<K,boolean>;weather_profile:string;scenery_profile:string;telemetry_enabled:boolean};
+type A={name:string;path:string;kind:string};
+type Scan={plugins:A[];scenery:A[];aircraft:A[];xplane_found:boolean;version:string|null};
+const base:S={preset:"Balanced",realism:68,xplane_path:null,reshade_ini:null,weather_profile:"Live weather",scenery_profile:"Balanced",telemetry_enabled:true,features:{colour:true,sharpening:true,ambient_occlusion:false,bloom:false,cloud_enhancement:true,anti_aliasing:true,depth_of_field:false,water_reflections:true,night_lighting:true,terrain_detail:true}};
+let s:S=structuredClone(base),page="Flight Deck",scan:Scan={plugins:[],scenery:[],aircraft:[],xplane_found:false,version:null},status="Initialising…",busy=false;
+const app=document.querySelector<HTMLDivElement>("#app")!;
+const features:{key:K;name:string;desc:string;tag:string}[]=[
+{key:"colour",name:"Colour grading",desc:"Tone, saturation and colour balance",tag:"IMAGE"},{key:"sharpening",name:"Image sharpening",desc:"Perceived detail and edge definition",tag:"IMAGE"},{key:"ambient_occlusion",name:"Ambient occlusion",desc:"Contact shadowing in cockpit and scenery",tag:"LIGHT"},{key:"bloom",name:"Bloom & glare",desc:"Highlight response around bright sources",tag:"LIGHT"},{key:"cloud_enhancement",name:"Cloud definition",desc:"Cloud contrast and atmospheric depth",tag:"ATMOS"},{key:"anti_aliasing",name:"Edge smoothing",desc:"Reduce visible geometry aliasing",tag:"IMAGE"},{key:"depth_of_field",name:"Depth of field",desc:"Camera focus effect profile",tag:"CAMERA"},{key:"water_reflections",name:"Water reflections",desc:"Water surface reflection profile",tag:"WORLD"},{key:"night_lighting",name:"Night lighting",desc:"Night environment and light profile",tag:"WORLD"},{key:"terrain_detail",name:"Terrain detail",desc:"Terrain clarity and distant detail",tag:"WORLD"}];
+const presets:Record<string,{realism:number;features:Record<K,boolean>}>={
+Performance:{realism:34,features:{...base.features,ambient_occlusion:false,bloom:false,cloud_enhancement:false,depth_of_field:false,water_reflections:false,terrain_detail:false}},
+Balanced:{realism:68,features:{...base.features,ambient_occlusion:false,bloom:false,depth_of_field:false}},
+Realistic:{realism:84,features:{...base.features,ambient_occlusion:true,bloom:false,depth_of_field:false}},
+Cinematic:{realism:96,features:{...base.features,ambient_occlusion:true,bloom:true,depth_of_field:true}}};
+const esc=(v:string)=>v.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]!));
+const count=()=>Object.values(s.features).filter(Boolean).length;
+const shortPath=(p:string|null)=>p?p.replace(/\\/g,"/").split("/").filter(Boolean).slice(-2).join("/"):"Not configured";
+function save(){window.clearTimeout((save as any).t);(save as any).t=window.setTimeout(async()=>{try{await invoke("save_settings",{settings:s});setStatus("All changes saved locally")}catch(e){setStatus("Save failed: "+String(e))}},350)}
+function setStatus(v:string){status=v;const el=document.querySelector("#system-status");if(el)el.textContent=v}
+function intro(k:string,t:string,d:string){return '<div class="page-intro"><div class="eyebrow">'+k+'</div><h1>'+t+'</h1><p>'+d+'</p></div>'}
+function gauge(k:string,v:string,d:string){return '<div class="instrument"><div class="instrument-label">'+k+'</div><div class="instrument-value">'+v+'</div><div class="instrument-sub">'+d+'</div></div>'}
+function range(){return '<div class="range-head"><div><div class="eyebrow">PROFILE INTENSITY</div><h2>Visual realism</h2></div><div class="big-value">'+s.realism+'<small>%</small></div></div><input id="realism-range" class="range" type="range" min="0" max="100" value="'+s.realism+'"><div class="range-scale"><span>SUBTLE</span><span>BALANCED</span><span>IMMERSIVE</span><span>MAXIMUM</span></div>'}
+function featureList(){return '<div class="feature-list">'+features.map(f=>'<div class="feature-row"><div class="feature-meta"><span class="feature-tag">'+f.tag+'</span><div><strong>'+f.name+'</strong><small>'+f.desc+'</small></div></div><button class="switch '+(s.features[f.key]?"on":"")+'" data-feature="'+f.key+'" role="switch" aria-checked="'+s.features[f.key]+'"><i></i></button></div>').join("")+'</div>'}
+function note(t:string){return '<div class="bottom-note"><span class="note-mark">i</span><span>'+t+'</span></div>'}
+function flightDeck(){return '<div class="hero-panel"><div class="hero-copy"><div class="eyebrow"><span class="live-dot"></span> FLIGHT SYSTEMS CONTROL</div><h1>Make every<br><em>flight immersive.</em></h1><p>Configure your X-Plane visual environment, manage add-ons and keep every profile flight-ready.</p><div class="hero-actions"><button class="btn-primary" data-nav="Visual Systems">Tune visual systems ↗</button><button class="btn-quiet" data-nav="Profiles">Explore profiles</button></div></div><div class="hero-graphic"><div class="radar-grid"></div><div class="radar-ring ring-one"></div><div class="radar-ring ring-two"></div><div class="radar-plane">✈</div><div class="radar-label top">XP / 12</div><div class="radar-label bottom">FLIGHT ENVIRONMENT</div><div class="radar-coord">N 51°30\\'26"<br>W 000°07\\'39"</div></div></div><div class="instrument-row">'+gauge("ACTIVE PROFILE",esc(s.preset),"CURRENT CONFIGURATION")+gauge("REALISM INDEX",s.realism+"%","VISUAL INTENSITY")+gauge("ACTIVE SYSTEMS",count()+"/10","FEATURES ENABLED")+gauge("SIMULATOR LINK",scan.xplane_found?"DETECTED":"STANDBY",scan.xplane_found?"FOLDER FOUND":"PATH NOT VERIFIED")+'</div><div class="dashboard-grid"><section class="panel">'+range()+'<div class="panel-foot"><span>Changes saved to your local profile</span><button class="text-link" data-nav="Visual Systems">Open visual systems ↗</button></div></section><section class="panel"><div class="section-head"><div><div class="eyebrow">SIMULATOR CONNECTION</div><h2>Flight installation</h2></div><span class="connection-indicator '+(scan.xplane_found?"connected":"")+'"></span></div><div class="connection-body"><div class="xp-mark">XP<span>12</span></div><div><strong>'+(scan.xplane_found?"X-Plane installation found":"Connect X-Plane 12")+'</strong><small>'+esc(shortPath(s.xplane_path))+'</small></div></div><div class="panel-foot"><span>Simulator integration status</span><button class="text-link" data-nav="Settings">Configure ↗</button></div></section></div><section class="panel quick-panel"><div class="section-head"><div><div class="eyebrow">ACTIVE CONFIGURATION</div><h2>Visual systems</h2></div><button class="text-link" data-nav="Visual Systems">Manage all ↗</button></div>'+featureList()+'</section>'+note("XP Enhance manages your profiles. Live renderer effects require a separate X-Plane integration plugin and are not active in this build.")}
+function visual(){return intro("FLIGHT ENVIRONMENT / CONFIGURATION","Visual systems","Fine-tune your visual environment. Every switch and profile is saved locally.")+'<section class="panel">'+range()+'<div class="panel-divider"></div><div class="section-head"><div><div class="eyebrow">INDIVIDUAL CONTROLS</div><h2>Enhancement systems</h2></div><span class="count-pill">'+count()+' / 10 ACTIVE</span></div>'+featureList()+'</section>'+note("These are profile controls. They do not change X-Plane's renderer until a simulator integration plugin is installed.")}
+function profile(){const desc:Record<string,string>={Performance:"Prioritise frame rate and reduce visual overhead.",Balanced:"A considered everyday setup for general flying.",Realistic:"A richer visual environment for immersive flights.",Cinematic:"A pronounced look for screenshots and video."};return intro("CONFIGURATION / PROFILE LIBRARY","Flight profiles","Choose a starting point for different aircraft, weather and performance conditions.")+'<div class="profile-grid">'+Object.entries(presets).map(([n,p])=>'<button class="profile-card '+(s.preset===n?"selected":"")+'" data-preset="'+n+'"><div class="profile-top"><span class="profile-icon">'+({Performance:"◴",Balanced:"◈",Realistic:"⌁",Cinematic:"✧"} as Record<string,string>)[n]+'</span><span class="profile-state">'+(s.preset===n?"ACTIVE PROFILE":"LOAD PROFILE ↗")+'</span></div><strong>'+n+'</strong><p>'+desc[n]+'</p><div class="profile-meter"><div style="width:'+p.realism+'%"></div></div><small>'+p.realism+'% INTENSITY · '+Object.values(p.features).filter(Boolean).length+' SYSTEMS</small></button>').join("")+'</div><section class="panel profile-tip"><div class="eyebrow">PROFILE NOTES</div><h2>Your setup, your rules.</h2><p>Loading a profile changes realism and feature switches. Your simulator folder and imported ReShade configuration remain untouched.</p></section>'}
+function reshade(){const ini=s.reshade_ini||"",sections=[...ini.matchAll(/^\\s*\\[([^\\]]+)\\]\\s*$/gm)].map(m=>m[1]),lines=ini.split(/\\r?\\n/).filter(x=>x.trim()&&!x.trim().startsWith(";")&&!x.trim().startsWith("#")).length;return intro("COMPATIBILITY / CONFIGURATION","ReShade studio","Import and inspect existing ReShade .ini configurations.")+'<section class="panel import-panel"><div class="import-icon">↥</div><div class="import-copy"><div class="eyebrow">CONFIGURATION IMPORT</div><h2>'+(ini?"ReShade configuration loaded":"Bring your ReShade setup")+'</h2><p>Select an existing ReShade .ini file. XP Enhance stores its content locally for review.</p><label class="btn-primary file-button">Choose .ini file<input id="reshade-file" type="file" accept=".ini,text/plain"></label></div><div class="import-stamp">'+(ini?"FILE LOADED":"INI / SUPPORTED")+'</div></section>'+(ini?'<div class="instrument-row compact">'+gauge("CONFIG SECTIONS",String(sections.length),"DETECTED HEADERS")+gauge("CONFIG LINES",String(lines),"NON-COMMENT LINES")+gauge("FILE STATUS","IMPORTED","SAVED LOCALLY")+'</div><section class="panel"><div class="section-head"><h2>Configuration preview</h2><button class="text-link danger" data-action="clear-ini">Remove configuration</button></div><div class="ini-preview">'+esc(ini.slice(0,9000))+'</div></section>':"")+note("INI import and storage are supported. Shader injection, shader compilation and automatic translation into X-Plane rendering effects are not implemented yet.")}
+function weather(){const opts=["Live weather","Clear skies","High overcast","Broken cloud","Storm approach","Low visibility"];return intro("ENVIRONMENT / ATMOSPHERE","Weather & atmosphere","Save the weather look you want to pair with your visual profile.")+'<section class="panel"><div class="eyebrow">WEATHER PROFILE</div><h2>Atmospheric preset</h2><div class="choice-grid">'+opts.map((v,i)=>'<button class="choice-card '+(s.weather_profile===v?"selected":"")+'" data-weather="'+v+'"><span>'+["◉","☼","☁","≋","ϟ","◌"][i]+'</span><strong>'+v+'</strong><small>'+(i===0?"Use simulator weather settings":"Saved environment preference")+'</small></button>').join("")+'</div></section>'+note("Weather presets currently store your preferred environment label. They do not override live X-Plane weather data.")}
+function list(items:A[],empty:string,help:string){return items.length?'<div class="addon-list">'+items.map(a=>'<div class="addon-row"><span class="addon-symbol">▣</span><div><strong>'+esc(a.name)+'</strong><small>'+esc(a.path)+'</small></div><span class="addon-kind">'+a.kind+'</span></div>').join("")+'</div>':'<div class="empty-state"><span>▧</span><strong>'+empty+'</strong><p>'+help+'</p></div>'}
+function scenery(){return intro("WORLD / SCENERY LIBRARY","Scenery","Review scenery packages discovered in your X-Plane installation.")+'<section class="panel"><div class="section-head"><h2>Installed scenery</h2><button class="btn-secondary" data-action="scan">Rescan installation</button></div>'+list(scan.scenery,"No scenery packages found","Custom Scenery folder has not been scanned.")+'</section>'}
+function addons(){return intro("LIBRARY / SIMULATOR CONTENT","Addon manager","Inspect add-ons and content folders inside your X-Plane installation.")+'<div class="instrument-row compact">'+gauge("PLUGINS",String(scan.plugins.length),"INSTALLED FOLDERS")+gauge("SCENERY",String(scan.scenery.length),"CUSTOM PACKAGES")+gauge("AIRCRAFT",String(scan.aircraft.length),"AIRCRAFT FOLDERS")+'</div><section class="panel"><div class="section-head"><h2>Installation scan</h2><button class="btn-primary" data-action="scan" '+(busy?"disabled":"")+'>'+(busy?"Scanning…":"Scan X-Plane")+'</button></div>'+(scan.xplane_found?'<div class="scan-summary"><span class="live-dot"></span> X-PLANE DIRECTORY SCANNED</div><div class="addon-tabs"><h3>Plugins</h3>'+list(scan.plugins,"No plugins detected","No folders found in Resources/plugins.")+'<h3>Custom scenery</h3>'+list(scan.scenery,"No scenery detected","No folders found in Custom Scenery.")+'<h3>Aircraft</h3>'+list(scan.aircraft,"No aircraft detected","No aircraft folders found.")+'</div>':'<div class="empty-state"><strong>Simulator folder not verified</strong><p>Set the X-Plane path in Settings, then scan.</p><button class="btn-secondary" data-nav="Settings">Open settings</button></div>')+'</section>'+note("Discovery and inventory are read-only. Add-on installation, updates and removal are not enabled, to avoid modifying simulator files unexpectedly.")}
+function performance(){return intro("SYSTEM / DIAGNOSTICS","Performance","Review your configured enhancement load and performance preferences.")+'<div class="instrument-row">'+gauge("PROFILE INTENSITY",s.realism+"%","CONFIGURED REALISM")+gauge("ACTIVE FEATURES",count()+"/10","PROFILE SWITCHES")+gauge("PRESET",s.preset.toUpperCase(),"ACTIVE PROFILE")+gauge("STATUS REPORTING",s.telemetry_enabled?"ON":"OFF","LOCAL STATUS")+'</div><section class="panel"><div class="eyebrow">PERFORMANCE PROFILES</div><h2>System preferences</h2><div class="feature-row"><div class="feature-meta"><div><strong>Performance-first mode</strong><small>Load the low-overhead profile.</small></div></div><button class="btn-secondary" data-preset="Performance">Apply</button></div><div class="feature-row"><div class="feature-meta"><div><strong>Balanced mode</strong><small>Restore a middle-ground configuration.</small></div></div><button class="btn-secondary" data-preset="Balanced">Apply</button></div></section>'+note("Live FPS, GPU and CPU readings require a simulator telemetry connection. No hardware metrics are fabricated here.")}
+function settings(){return intro("APPLICATION / CONFIGURATION","Settings","Configure the simulator directory and local application preferences.")+'<section class="panel"><div class="eyebrow">SIMULATOR INSTALLATION</div><h2>X-Plane 12 directory</h2><p class="muted">Enter the folder containing X-Plane.exe.</p><label class="field-label" for="xplane-path">INSTALLATION PATH</label><div class="path-entry"><input id="xplane-path" class="text-input" value="'+esc(s.xplane_path||"")+'" placeholder="e.g. D:\\\\X-Plane 12"><button class="btn-primary" data-action="save-path">Save path</button></div><div class="path-status"><span class="connection-indicator '+(scan.xplane_found?"connected":"")+'"></span>'+(scan.xplane_found?"Simulator directory verified":s.xplane_path?"Path saved · not yet verified":"No simulator directory configured")+'</div><div class="panel-foot"><span>Example: C:\\\\X-Plane 12</span><button class="text-link" data-action="detect">Auto-detect ↗</button></div></section><section class="panel"><div class="eyebrow">APPLICATION PREFERENCES</div><h2>Local behaviour</h2><div class="feature-row"><div class="feature-meta"><div><strong>Local status reporting</strong><small>Show save and scan status.</small></div></div><button class="switch '+(s.telemetry_enabled?"on":"")+'" data-setting="telemetry_enabled" role="switch"><i></i></button></div><div class="info-rows"><div><span>Application</span><strong>XP Enhance</strong></div><div><span>Version</span><strong>0.3.0 · Rust / Tauri 2</strong></div><div><span>Settings storage</span><strong>Local JSON configuration</strong></div></div></section>'}
+const groups=[{label:"FLIGHT OPERATIONS",items:["Flight Deck","Visual Systems","Profiles","Weather & Atmosphere"]},{label:"LIBRARY",items:["Scenery","Addon Manager","ReShade Studio"]},{label:"SYSTEM",items:["Performance","Settings"]}],icons:Record<string,string>={"Flight Deck":"⌂","Visual Systems":"◈","Profiles":"▤","Weather & Atmosphere":"☁",Scenery:"▧","Addon Manager":"▣","ReShade Studio":"◉",Performance:"⌁",Settings:"⚙"};
+function render(){const pages:Record<string,()=>string>={"Flight Deck":flightDeck,"Visual Systems":visual,Profiles:profile,"Weather & Atmosphere":weather,Scenery:scenery,"Addon Manager":addons,"ReShade Studio":reshade,Performance:performance,Settings:settings};app.innerHTML='<div class="app-shell"><aside class="sidebar"><div class="brand"><div class="brand-mark"><span>V</span><i></i></div><div><strong>XP ENHANCE</strong><small>FLIGHT ENVIRONMENT SYSTEMS</small></div></div><div class="sim-chip"><span class="live-dot '+(scan.xplane_found?"":"idle")+'"></span><div><strong>X-PLANE 12</strong><small>'+(scan.xplane_found?"INSTALLATION FOUND":"NOT CONNECTED")+'</small></div><span class="chip-arrow">⌄</span></div><div class="nav-scroll">'+groups.map(g=>'<div class="nav-group"><div class="nav-label">'+g.label+'</div>'+g.items.map(p=>'<button class="nav-item '+(page===p?"active":"")+'" data-nav="'+p+'"><span class="nav-icon">'+icons[p]+'</span>'+p+(page===p?'<i class="nav-active-mark"></i>':"")+'</button>').join("")+'</div>').join("")+'</div><div class="sidebar-bottom"><div class="sidebar-status"><span class="live-dot"></span><div><strong>SYSTEM READY</strong><small>LOCAL PROFILE ACTIVE</small></div></div><div class="version-label">XP ENHANCE <span>v0.3.0</span></div></div></aside><main class="main-area"><header class="topbar"><div class="breadcrumbs"><span>XP ENHANCE</span><b>/</b><strong>'+page.toUpperCase()+'</strong></div><div class="topbar-right"><span class="save-state" id="system-status">'+esc(status)+'</span><span class="topbar-divider"></span><span class="user-avatar">XP</span><span class="user-label">PILOT WORKSPACE</span></div></header><div class="page-content">'+(pages[page]||flightDeck)()+'</div><footer class="app-footer"><span>XP ENHANCE · X-PLANE 12 FLIGHT TOOLKIT</span><span>PROFILE: '+s.preset.toUpperCase()+' · '+s.realism+'% INTENSITY</span></footer></main></div>'}
+function applyPreset(n:string){if(!presets[n])return;s.preset=n;s.realism=presets[n].realism;s.features={...presets[n].features};render();save();setStatus(n+" profile loaded")}
+async function scanNow(){if(!s.xplane_path){setStatus("Set the X-Plane folder in Settings first");return}busy=true;render();setStatus("Scanning simulator folders…");try{scan=await invoke<Scan>("scan_xplane",{path:s.xplane_path});setStatus(scan.xplane_found?"Simulator scan complete":"X-Plane executable was not found")}catch(e){setStatus("Scan failed: "+String(e))}finally{busy=false;render()}}
+async function detect(){setStatus("Searching common X-Plane locations…");try{const found=await invoke<string|null>("detect_xplane");if(found){s.xplane_path=found;save();await scanNow()}else setStatus("No installation found. Enter the folder manually.");render()}catch(e){setStatus("Auto-detection failed: "+String(e))}}
+app.addEventListener("click",async ev=>{const t=ev.target as HTMLElement,nav=t.closest<HTMLElement>("[data-nav]");if(nav){page=nav.dataset.nav||"Flight Deck";render();return}const f=t.closest<HTMLElement>("[data-feature]");if(f){const k=f.dataset.feature as K;s.features[k]=!s.features[k];render();save();return}const p=t.closest<HTMLElement>("[data-preset]");if(p){applyPreset(p.dataset.preset||"Balanced");return}const w=t.closest<HTMLElement>("[data-weather]");if(w){s.weather_profile=w.dataset.weather||"Live weather";render();save();return}const action=t.closest<HTMLElement>("[data-action]")?.dataset.action;if(action==="scan"){await scanNow();return}if(action==="detect"){await detect();return}if(action==="save-path"){s.xplane_path=document.querySelector<HTMLInputElement>("#xplane-path")?.value.trim()||null;save();render();setStatus("Simulator path saved");return}if(action==="clear-ini"){s.reshade_ini=null;save();render();return}const setting=t.closest<HTMLElement>("[data-setting]")?.dataset.setting;if(setting==="telemetry_enabled"){s.telemetry_enabled=!s.telemetry_enabled;render();save()}});
+app.addEventListener("input",ev=>{const t=ev.target as HTMLInputElement;if(t.id==="realism-range"){s.realism=Number(t.value);const v=document.querySelector(".big-value");if(v)v.innerHTML=s.realism+'<small>%</small>';save()}});
+app.addEventListener("change",async ev=>{const t=ev.target as HTMLInputElement;if(t.id==="reshade-file"&&t.files?.[0]){const file=t.files[0];if(file.size>2000000){setStatus("INI file exceeds 2 MB limit");return}try{s.reshade_ini=await file.text();save();render();setStatus("ReShade INI imported and saved")}catch(e){setStatus("Could not read INI: "+String(e))}}});
+async function start(){try{const loaded=await invoke<Partial<S>>("get_settings");s={...base,...loaded,features:{...base.features,...loaded.features}}}catch(e){console.error(e)}try{if(s.xplane_path)scan=await invoke<Scan>("scan_xplane",{path:s.xplane_path})}catch(e){console.warn(e)}render();setStatus("Flight systems initialised")}
 void start();
