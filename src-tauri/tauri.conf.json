@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "XP Enhance",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "identifier": "com.xpenhance.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -13,10 +13,10 @@
     "windows": [
       {
         "title": "XP Enhance",
-        "width": 1440,
-        "height": 900,
-        "minWidth": 1120,
-        "minHeight": 720,
+        "width": 1480,
+        "height": 960,
+        "minWidth": 960,
+        "minHeight": 700,
         "center": true,
         "resizable": true,
         "fullscreen": false
@@ -28,9 +28,11 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "category": "Utility",
-    "shortDescription": "X-Plane 12 visual enhancement manager",
-    "longDescription": "Configure visual enhancement presets and manage X-Plane 12 settings."
+    "shortDescription": "Liquid glass visual enhancement control centre for X-Plane 12",
+    "longDescription": "Configure supported X-Plane 12 visual enhancements, ReShade presets and simulator integrations."
   }
 }
