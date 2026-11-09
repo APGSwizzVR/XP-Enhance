@@ -37,3 +37,12 @@ OptiShade is a useful product reference for the workflow—profiles, a manager, 
 - NVIDIA DLSS 5 technical overview: https://www.nvidia.com/en-us/geforce/news/dlss-5-3d-guided-neural-rendering/
 - NVIDIA developer SDK access statement: https://forums.developer.nvidia.com/t/official-dlss-5-neural-rendering-plugin-access-for-unreal-engine-5-8-2/382731/
 - OptiShade project overview: https://github.com/GamingWithGravy/OptiShade
+
+
+## XP Enhance 0.6.2 graphics-manager implementation
+
+The desktop manager now has an OptiShade-style setup workflow for X-Plane's Vulkan path. It launches a ReShade setup executable already present in the user's Downloads folder, or opens the official ReShade download page. The user selects their X-Plane.exe and Vulkan in the official setup tool; XP Enhance does not redistribute ReShade binaries or shader repositories.
+
+The manager detects a game-local ReShade configuration and shader folder plus a system-wide ReShade Vulkan layer manifest. It installs an XP Enhance-authored ReShade FX colour-grade shader (exposure, contrast, saturation and warmth), backing up an existing copy before replacement. It can import a user-selected ReShade .ini preset into an XPEnhance-Presets folder, preserving a same-name previous preset as a backup. Imported presets are selected from ReShade's in-game overlay.
+
+This is an actual ReShade post-processing integration path, not DLSS 5. The ReShade setup remains an external official installer, and X-Plane/Vulkan compatibility must be verified on the user's machine. XP Enhance does not claim neural rendering, upscaling or frame generation from the shader effects.

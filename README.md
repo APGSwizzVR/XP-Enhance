@@ -40,3 +40,12 @@ The project uses Tauri 2, Rust, TypeScript and Vite. GitHub Actions builds the W
 ## Copyright
 
 See LICENSE, COPYRIGHT.md and THIRD-PARTY-NOTICES.md.
+
+
+## Graphics Engine (0.6.2)
+
+XP Enhance includes an OptiShade-style ReShade manager for X-Plane 12's Vulkan renderer. Use Graphics Engine → Install / open ReShade setup, select `X-Plane.exe` in the official ReShade installer, choose **Vulkan**, and install the Standard Effects package. XP Enhance does not redistribute ReShade binaries.
+
+After setup, use **Install / update XP Enhance effects** to deploy the XP Enhance-authored flight-grade shader (exposure, contrast, saturation and warmth). Import `.ini` presets into `XPEnhance-Presets`, then select them in ReShade's in-game overlay. The app backs up an existing XP Enhance shader or same-name preset before replacing it. Close X-Plane before installing or updating rendering components.
+
+ReShade effects are post-processing; they are not DLSS 5, neural reconstruction or frame generation. X-Plane Vulkan support and performance depend on the local simulator, driver and overlay stack.

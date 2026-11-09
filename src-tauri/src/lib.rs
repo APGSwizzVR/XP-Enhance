@@ -167,10 +167,88 @@ fn set_xplane_fps_overlay(xplane_api_port:u16)->Result<(),String>{
     Ok(())
 }
 
+
+#[derive(Serialize)]
+struct ReshadeStatus { detected:bool, config_found:bool, shader_folder_found:bool, global_vulkan_layer_found:bool, preset_folder:String }
+
+#[tauri::command]
+fn get_reshade_status(xplane_path:String)->Result<ReshadeStatus,String>{
+    let root=PathBuf::from(xplane_path.trim());
+    if !valid_xplane(&root){return Err("Select a valid X-Plane 12 folder first.".into())}
+    let config_found=root.join("ReShade.ini").is_file() || root.join("reshade.ini").is_file();
+    let shader_folder_found=root.join("reshade-shaders").is_dir();
+    let global=std::env::var_os("PROGRAMDATA").map(PathBuf::from).unwrap_or_else(||PathBuf::from("C:/ProgramData")).join("ReShade");
+    let global_vulkan_layer_found=global.exists() && fs::read_dir(&global).map(|it|it.flatten().any(|e|e.path().extension().and_then(|x|x.to_str()).map(|x|x.eq_ignore_ascii_case("json")).unwrap_or(false))).unwrap_or(false);
+    let preset_folder=root.join("XPEnhance-Presets");
+    Ok(ReshadeStatus{detected:config_found||shader_folder_found||global_vulkan_layer_found,config_found,shader_folder_found,global_vulkan_layer_found,preset_folder:preset_folder.to_string_lossy().into_owned()})
+}
+
+#[tauri::command]
+fn launch_reshade_setup(xplane_path:String)->Result<String,String>{
+    let root=PathBuf::from(xplane_path.trim());
+    if !valid_xplane(&root){return Err("Select and save your X-Plane 12 folder in Settings first.".into())}
+    let downloads=std::env::var_os("USERPROFILE").map(PathBuf::from).map(|p|p.join("Downloads"));
+    let mut installer:Option<PathBuf>=None;
+    if let Some(dir)=downloads {
+        if let Ok(entries)=fs::read_dir(dir){
+            let mut candidates:Vec<PathBuf>=entries.flatten().map(|e|e.path()).filter(|p|p.extension().and_then(|x|x.to_str()).map(|x|x.eq_ignore_ascii_case("exe")).unwrap_or(false) && p.file_name().and_then(|x|x.to_str()).map(|x|x.to_ascii_lowercase().contains("reshade") && x.to_ascii_lowercase().contains("setup")).unwrap_or(false)).collect();
+            candidates.sort_by_key(|p|fs::metadata(p).and_then(|m|m.modified()).ok());
+            installer=candidates.pop();
+        }
+    }
+    if let Some(exe)=installer {
+        Command::new(exe).spawn().map_err(|e|format!("Could not start ReShade setup: {e}"))?;
+        Ok("Started the ReShade setup found in Downloads. Select X-Plane.exe and choose Vulkan.".into())
+    } else {
+        Command::new("cmd").args(["/C","start","","https://reshade.me/"]).spawn().map_err(|e|format!("Could not open the official ReShade download page: {e}"))?;
+        Ok("Opened the official ReShade download page. Download and run its setup, select X-Plane.exe, then choose Vulkan.".into())
+    }
+}
+
+#[tauri::command]
+fn install_xp_enhance_effects(xplane_path:String)->Result<String,String>{
+    let root=PathBuf::from(xplane_path.trim());
+    if !valid_xplane(&root){return Err("Select a valid X-Plane 12 folder first.".into())}
+    let target_dir=root.join("reshade-shaders").join("Shaders").join("XPEnhance");
+    fs::create_dir_all(&target_dir).map_err(|e|format!("Could not create XP Enhance shader folder: {e}"))?;
+    let target=target_dir.join("XPEnhance.fx");
+    if target.exists(){
+        let backup_dir=root.join("XPEnhance-Backups");
+        fs::create_dir_all(&backup_dir).map_err(|e|e.to_string())?;
+        let backup=backup_dir.join("XPEnhance.fx.previous");
+        if !backup.exists(){fs::copy(&target,&backup).map_err(|e|format!("Could not back up the existing XP Enhance shader: {e}"))?;}
+    }
+    fs::write(&target,include_str!("../assets/XPEnhance.fx")).map_err(|e|format!("Could not install XP Enhance shader: {e}"))?;
+    Ok(target.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn deploy_reshade_preset(source_path:String,xplane_path:String)->Result<String,String>{
+    let source=PathBuf::from(source_path.trim());
+    let root=PathBuf::from(xplane_path.trim());
+    if !valid_xplane(&root){return Err("Select a valid X-Plane 12 folder first.".into())}
+    if !source.is_file() || source.extension().and_then(|x|x.to_str()).map(|x|!x.eq_ignore_ascii_case("ini")).unwrap_or(true){return Err("Choose an existing ReShade .ini preset file.".into())}
+    let dir=root.join("XPEnhance-Presets");
+    fs::create_dir_all(&dir).map_err(|e|e.to_string())?;
+    let name=source.file_name().ok_or_else(||"Preset filename is invalid.".to_string())?;
+    let target=dir.join(name);
+    if target.exists(){let backup=dir.join(format!("{}.backup",name.to_string_lossy()));if !backup.exists(){fs::copy(&target,&backup).map_err(|e|format!("Could not back up the existing preset: {e}"))?;}}
+    fs::copy(&source,&target).map_err(|e|format!("Could not copy preset: {e}"))?;
+    Ok(target.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn open_xplane_folder(xplane_path:String)->Result<(),String>{
+    let root=PathBuf::from(xplane_path.trim());
+    if !valid_xplane(&root){return Err("Select a valid X-Plane 12 folder first.".into())}
+    Command::new("explorer.exe").arg(root).spawn().map_err(|e|format!("Could not open X-Plane folder: {e}"))?;
+    Ok(())
+}
+
 #[cfg_attr(mobile,tauri::mobile_entry_point)]
 pub fn run(){
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_settings,save_settings,detect_xplane,scan_xplane,get_performance_snapshot,set_xplane_fps_overlay])
+        .invoke_handler(tauri::generate_handler![get_settings,save_settings,detect_xplane,scan_xplane,get_performance_snapshot,set_xplane_fps_overlay,get_reshade_status,launch_reshade_setup,install_xp_enhance_effects,deploy_reshade_preset,open_xplane_folder])
         .run(tauri::generate_context!())
         .expect("error while running XP Enhance");
 }
