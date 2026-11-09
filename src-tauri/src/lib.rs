@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::{Path, PathBuf}, process::Command, time::Duration};
 use sysinfo::System;
+use reqwest::blocking::Client;
+use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,6 +50,11 @@ struct PerformanceSnapshot {
     cpu_usage_percent:f32, memory_used_mb:u64, memory_total_mb:u64,
     gpu_name:Option<String>, gpu_utilization_percent:Option<u32>,
     gpu_temperature_c:Option<u32>, vram_used_mb:Option<u64>, vram_total_mb:Option<u64>,
+    process_count:usize, xplane_running:bool, xplane_cpu_usage_percent:Option<f32>,
+    xplane_memory_mb:Option<u64>, system_uptime_seconds:u64, xplane_fps:Option<f32>,
+    xplane_frame_time_ms:Option<f32>, xplane_cpu_frame_ms:Option<f32>, xplane_gpu_frame_ms:Option<f32>,
+    cpu_core_count:Option<usize>, logical_thread_count:usize, cpu_frequency_mhz:Option<u64>,
+    memory_available_mb:u64, swap_used_mb:u64, swap_total_mb:u64,
 }
 
 fn settings_file(app:&AppHandle)->Result<PathBuf,String>{
@@ -112,31 +119,58 @@ fn scan_xplane(path:String)->Result<ScanResult,String>{
     Ok(ScanResult{plugins,scenery,aircraft,xplane_found:true,version})
 }
 
+fn xplane_dataref(client:&Client,port:u16,name:&str)->Option<f32>{
+    let base=format!("http://127.0.0.1:{port}/api/v1");
+    let list:Value=client.get(format!("{base}/datarefs")).query(&[("filter[name]",name)]).send().ok()?.error_for_status().ok()?.json().ok()?;
+    let id=list.get("data")?.as_array()?.first()?.get("id")?.as_u64()?;
+    let value:Value=client.get(format!("{base}/datarefs/{id}/value")).send().ok()?.error_for_status().ok()?.json().ok()?;
+    value.get("data")?.as_f64().map(|v|v as f32)
+}
+
 #[tauri::command]
-fn get_performance_snapshot()->Result<PerformanceSnapshot,String>{
-    let mut system=System::new_all();
-    system.refresh_all();
-    std::thread::sleep(Duration::from_millis(120));
-    system.refresh_all();
+fn get_performance_snapshot(xplane_api_port:u16)->Result<PerformanceSnapshot,String>{
+    let mut system=System::new_all(); system.refresh_all();
+    std::thread::sleep(Duration::from_millis(120)); system.refresh_all();
     let cpu_usage_percent=system.global_cpu_usage();
     let memory_used_mb=system.used_memory()/(1024*1024);
     let memory_total_mb=system.total_memory()/(1024*1024);
-    let gpu_name=Command::new("powershell.exe")
-        .args(["-NoProfile","-NonInteractive","-Command","(Get-CimInstance Win32_VideoController | Select-Object -First 1 -ExpandProperty Name)"])
-        .output().ok()
-        .filter(|o|o.status.success())
-        .and_then(|o|String::from_utf8_lossy(&o.stdout).lines().next().map(str::trim).filter(|s|!s.is_empty()).map(str::to_string));
-    let gpu_utilization_percent=None;
-    let gpu_temperature_c=None;
-    let vram_used_mb=None;
-    let vram_total_mb=None;
-    Ok(PerformanceSnapshot{cpu_usage_percent,memory_used_mb,memory_total_mb,gpu_name,gpu_utilization_percent,gpu_temperature_c,vram_used_mb,vram_total_mb})
+    let memory_available_mb=system.available_memory()/(1024*1024);
+    let swap_used_mb=system.used_swap()/(1024*1024);
+    let swap_total_mb=system.total_swap()/(1024*1024);
+    let cpu_core_count=System::physical_core_count();
+    let logical_thread_count=system.cpus().len();
+    let cpu_frequency_mhz=system.cpus().first().map(|c|c.frequency());
+    let process_count=system.processes().len();
+    let xplane=system.processes().values().find(|p|{let n=p.name().to_string_lossy().to_ascii_lowercase();n=="x-plane.exe"||n=="x-plane"});
+    let xplane_running=xplane.is_some();
+    let xplane_cpu_usage_percent=xplane.map(|p|p.cpu_usage());
+    let xplane_memory_mb=xplane.map(|p|p.memory()/(1024*1024));
+    let system_uptime_seconds=System::uptime();
+    let gpu_name=Command::new("powershell.exe").args(["-NoProfile","-NonInteractive","-Command","(Get-CimInstance Win32_VideoController | Select-Object -First 1 -ExpandProperty Name)"]).output().ok().filter(|o|o.status.success()).and_then(|o|String::from_utf8_lossy(&o.stdout).lines().next().map(str::trim).filter(|s|!s.is_empty()).map(str::to_string));
+    let mut gpu_utilization_percent=None;let mut vram_used_mb=None;let mut vram_total_mb=None;
+    let client=Client::builder().timeout(Duration::from_millis(350)).build().map_err(|e|e.to_string())?;
+    let period=xplane_dataref(&client,xplane_api_port,"sim/time/framerate_period").or_else(||xplane_dataref(&client,xplane_api_port,"sim/operation/misc/frame_rate_period"));
+    let xplane_fps=period.filter(|v|*v>0.0).map(|v|1.0/v);
+    let xplane_frame_time_ms=period.map(|v|v*1000.0);
+    let xplane_cpu_frame_ms=xplane_dataref(&client,xplane_api_port,"sim/time/cpu_time_per_frame_sec_approx").map(|v|v*1000.0);
+    let xplane_gpu_frame_ms=xplane_dataref(&client,xplane_api_port,"sim/time/gpu_time_per_frame_sec_approx").map(|v|v*1000.0);
+    Ok(PerformanceSnapshot{cpu_usage_percent,memory_used_mb,memory_total_mb,gpu_name,gpu_utilization_percent,gpu_temperature_c:None,vram_used_mb,vram_total_mb,process_count,xplane_running,xplane_cpu_usage_percent,xplane_memory_mb,system_uptime_seconds,xplane_fps,xplane_frame_time_ms,xplane_cpu_frame_ms,xplane_gpu_frame_ms,cpu_core_count,logical_thread_count,cpu_frequency_mhz,memory_available_mb,swap_used_mb,swap_total_mb})
+}
+
+#[tauri::command]
+fn set_xplane_fps_overlay(xplane_api_port:u16)->Result<(),String>{
+    let client=Client::builder().timeout(Duration::from_secs(2)).build().map_err(|e|e.to_string())?;
+    let base=format!("http://127.0.0.1:{xplane_api_port}/api/v2");
+    let commands:Value=client.get(format!("{base}/commands")).query(&[("filter[name]","sim/operation/show_fps")]).send().map_err(|e|format!("Cannot reach X-Plane Web API: {e}"))?.error_for_status().map_err(|e|format!("X-Plane API request failed: {e}"))?.json().map_err(|e|format!("Invalid X-Plane API response: {e}"))?;
+    let id=commands.get("data").and_then(Value::as_array).and_then(|a|a.first()).and_then(|v|v.get("id")).and_then(Value::as_u64).ok_or_else(||"X-Plane did not expose its built-in FPS display command. Check that a flight is loaded.".to_string())?;
+    client.post(format!("{base}/command/{id}/activate")).json(&serde_json::json!({"duration":0})).send().map_err(|e|format!("Could not toggle X-Plane FPS display: {e}"))?.error_for_status().map_err(|e|format!("X-Plane rejected the FPS display command: {e}"))?;
+    Ok(())
 }
 
 #[cfg_attr(mobile,tauri::mobile_entry_point)]
 pub fn run(){
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_settings,save_settings,detect_xplane,scan_xplane,get_performance_snapshot])
+        .invoke_handler(tauri::generate_handler![get_settings,save_settings,detect_xplane,scan_xplane,get_performance_snapshot,set_xplane_fps_overlay])
         .run(tauri::generate_context!())
         .expect("error while running XP Enhance");
 }

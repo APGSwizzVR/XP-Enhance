@@ -13,6 +13,12 @@ XP Enhance is a Windows desktop workspace for configuring and saving a personal 
 - X-Plane folder detection and read-only inventory of aircraft, scenery and plugin folders.
 - Local profile persistence.
 
+## Live performance telemetry
+
+The Performance page samples automatically once per second. It shows system CPU and memory, available memory, swap, CPU core/thread counts and frequency, running process count, X-Plane process CPU/memory, and the graphics device identified by Windows. GPU load, temperature and VRAM sensors are only displayed when a supported Windows hardware counter is available.
+
+X-Plane FPS and frame-time readings are read from the simulator's local Web API. This requires X-Plane 12.1.1 or newer, a loaded flight, and incoming traffic enabled in Settings → Network. The default API port is 8086. The separate in-simulator FPS switch invokes X-Plane's own built-in FPS display command; it is independent of the desktop Performance tab.
+
 ## Rendering status and limitations
 
 The DLSS 5 tab is a configuration workspace only. It does not contain NVIDIA DLSS 5 runtime code, run a neural rendering model, or enable DLSS 5 inside X-Plane. NVIDIA currently lists GeForce RTX 50 Series support. NVIDIA developer forum staff have stated that the DLSS 5 SDK is not yet publicly available and access is currently through developer-partner cooperation. Genuine X-Plane support requires NVIDIA SDK access and direct integration into the simulator's rendering pipeline. A desktop settings panel cannot create that integration by itself.
