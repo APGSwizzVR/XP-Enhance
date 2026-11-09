@@ -30,6 +30,19 @@ impl Default for FeatureSettings {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+struct DlssSettings {
+    gpu_series: String, style: String, strength: u8, render_scale: u8, sharpness: u8,
+    lighting: u8, materials: u8, temporal: u8, motion: u8, ghosting: u8,
+    exposure: u8, colour_depth: u8, foliage: u8, clouds: u8, cockpit: u8, reflections: u8,
+    frame_generation: bool, ray_reconstruction: bool, low_latency: bool,
+    dynamic_resolution: bool, preserve_grain: bool,
+}
+impl Default for DlssSettings {
+    fn default() -> Self { Self { gpu_series: "Auto detect".into(), style: "Natural".into(), strength: 65, render_scale: 100, sharpness: 35, lighting: 70, materials: 65, temporal: 75, motion: 70, ghosting: 65, exposure: 55, colour_depth: 70, foliage: 65, clouds: 70, cockpit: 85, reflections: 65, frame_generation: false, ray_reconstruction: false, low_latency: true, dynamic_resolution: false, preserve_grain: true } }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 struct AppSettings {
     preset: String,
     realism: u8,
@@ -42,10 +55,12 @@ struct AppSettings {
     fps_overlay_enabled: bool,
     fps_overlay_position: String,
     xplane_api_port: u16,
+    dlss: DlssSettings,
+    atmosphere: std::collections::HashMap<String, u8>,
 }
 impl Default for AppSettings {
     fn default() -> Self {
-        Self { preset: "Balanced".into(), realism: 68, xplane_path: None, reshade_ini: None, features: FeatureSettings::default(), weather_profile: "Live weather".into(), scenery_profile: "Balanced".into(), telemetry_enabled: true, fps_overlay_enabled: false, fps_overlay_position: "top-right".into(), xplane_api_port: 8086 }
+        Self { preset: "Balanced".into(), realism: 68, xplane_path: None, reshade_ini: None, features: FeatureSettings::default(), weather_profile: "Live weather".into(), scenery_profile: "Balanced".into(), telemetry_enabled: true, fps_overlay_enabled: false, fps_overlay_position: "top-right".into(), xplane_api_port: 8086, dlss: DlssSettings::default(), atmosphere: std::collections::HashMap::new() }
     }
 }
 
