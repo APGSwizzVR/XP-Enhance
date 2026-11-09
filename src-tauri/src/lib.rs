@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::{fs, path::{Path, PathBuf}, time::{SystemTime, UNIX_EPOCH}};
+use serde_json::Value;
+use sha2::{Digest, Sha256};
+use std::{fs, path::{Path, PathBuf}, process::Command, time::{Duration, SystemTime, UNIX_EPOCH}};
 use tauri::{AppHandle, Manager};
 
 const RXP_SCRIPT: &str = include_str!("../resources/rxp-xp12-enhancer.lua");
@@ -204,10 +206,98 @@ fn open_external(url: String) -> Result<(), String> {
     Ok(())
 }
 
+\n#[derive(Serialize)]
+struct UpdateInfo { version: String, current_version: String }
+
+fn latest_release_details() -> Result<(String, String, String), String> {
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("XP-Enhance-Updater")
+        .timeout(Duration::from_secs(45))
+        .build().map_err(|e| format!("Could not initialise update checker: {e}"))?;
+    let response = client.get("https://api.github.com/repos/APGSwizzVR/XP-Enhance/releases/latest")
+        .header("Accept", "application/vnd.github+json")
+        .send().map_err(|e| format!("Could not contact GitHub releases: {e}"))?;
+    if !response.status().is_success() {
+        return Err(format!("GitHub release check returned HTTP {}", response.status()));
+    }
+    let release: Value = response.json().map_err(|e| format!("Could not read release metadata: {e}"))?;
+    let tag = release.get("tag_name").and_then(Value::as_str)
+        .ok_or_else(|| "Latest GitHub release has no version tag.".to_string())?.to_string();
+    let mut selected: Option<(String, String)> = None;
+    if let Some(assets) = release.get("assets").and_then(Value::as_array) {
+        for asset in assets {
+            let name = asset.get("name").and_then(Value::as_str).unwrap_or("");
+            let url = asset.get("browser_download_url").and_then(Value::as_str).unwrap_or("");
+            let digest = asset.get("digest").and_then(Value::as_str).unwrap_or("");
+            if name.to_ascii_lowercase().ends_with(".exe")
+                && url.starts_with("https://github.com/APGSwizzVR/XP-Enhance/releases/download/")
+                && digest.starts_with("sha256:") {
+                selected = Some((url.to_string(), digest.to_string()));
+                break;
+            }
+        }
+    }
+    let (url, digest) = selected.ok_or_else(|| "The latest release has no Windows installer with a SHA-256 digest. Please try again later.".to_string())?;
+    Ok((tag, url, digest))
+}
+
+#[tauri::command]
+fn check_for_update() -> Result<Option<UpdateInfo>, String> {
+    let (tag, _, _) = latest_release_details()?;
+    let latest_text = tag.trim_start_matches('v');
+    let latest = semver::Version::parse(latest_text).map_err(|e| format!("Invalid release version '{tag}': {e}"))?;
+    let current = semver::Version::parse(env!("CARGO_PKG_VERSION")).map_err(|e| e.to_string())?;
+    if latest > current {
+        Ok(Some(UpdateInfo { version: tag, current_version: current.to_string() }))
+    } else { Ok(None) }
+}
+
+#[tauri::command]
+fn install_update(app: AppHandle, version: String) -> Result<String, String> {
+    let (latest_tag, url, expected_digest) = latest_release_details()?;
+    if version != latest_tag {
+        return Err("The release changed since the update notice appeared. Reopen XP Enhance to check again.".into());
+    }
+    let latest = semver::Version::parse(latest_tag.trim_start_matches('v')).map_err(|e| e.to_string())?;
+    let current = semver::Version::parse(env!("CARGO_PKG_VERSION")).map_err(|e| e.to_string())?;
+    if latest <= current { return Err("XP Enhance is already up to date.".into()); }
+
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("XP-Enhance-Updater")
+        .timeout(Duration::from_secs(180))
+        .build().map_err(|e| e.to_string())?;
+    let response = client.get(&url).send().map_err(|e| format!("Installer download failed: {e}"))?;
+    if !response.status().is_success() { return Err(format!("Installer download returned HTTP {}", response.status())); }
+    if response.content_length().unwrap_or(0) > 500 * 1024 * 1024 {
+        return Err("The installer is larger than the 500 MB safety limit.".into());
+    }
+    let bytes = response.bytes().map_err(|e| format!("Could not read installer download: {e}"))?;
+    if bytes.len() > 500 * 1024 * 1024 { return Err("The installer is larger than the 500 MB safety limit.".into()); }
+    let expected = expected_digest.strip_prefix("sha256:").ok_or_else(|| "Release digest format is unsupported.".to_string())?;
+    let actual = format!("{:x}", Sha256::digest(&bytes));
+    if !actual.eq_ignore_ascii_case(expected) { return Err("Installer integrity check failed. The downloaded file was not launched.".into()); }
+
+    let safe_version: String = version.chars().map(|c| if c.is_ascii_alphanumeric() || c == '.' || c == '-' { c } else { '_' }).collect();
+    let installer = std::env::temp_dir().join(format!("XP-Enhance-Setup-{safe_version}.exe"));
+    fs::write(&installer, &bytes).map_err(|e| format!("Could not save installer: {e}"))?;
+    #[cfg(target_os = "windows")]
+    {
+        Command::new(&installer).spawn().map_err(|e| format!("Could not launch verified installer: {e}"))?;
+        app.exit(0);
+        Ok("Verified installer launched. XP Enhance is closing so the update can be installed.".into())
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = app;
+        let _ = installer;
+        Err("In-app installer is currently supported on Windows only.".into())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_settings, save_settings, detect_xplane, scan_xplane, get_integration_status, sync_visual_settings, install_visual_integration, deploy_reshade_preset, launch_lumina_manager, open_external])
+        .invoke_handler(tauri::generate_handler![get_settings, save_settings, detect_xplane, scan_xplane, get_integration_status, sync_visual_settings, install_visual_integration, deploy_reshade_preset, launch_lumina_manager, open_external, check_for_update, install_update])
         .run(tauri::generate_context!())
         .expect("error while running XP Enhance");
 }

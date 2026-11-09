@@ -1,6 +1,6 @@
 [package]
 name = "xp-enhance"
-version = "0.4.0"
+version = "0.4.1"
 description = "Liquid glass X-Plane 12 visual environment control centre"
 authors = ["APGSwizzVR"]
 edition = "2021"
@@ -16,3 +16,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+sha2 = "0.10"
+semver = "1"
