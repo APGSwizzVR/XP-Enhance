@@ -47,7 +47,7 @@ jobs:
         with:
           tag_name: v${{ steps.app_version.outputs.version }}
           name: XP Enhance v${{ steps.app_version.outputs.version }}
-          body: Stable Windows x64 installer for XP Enhance v${{ steps.app_version.outputs.version }}. Commit: ${{ github.sha }}.
+          body: "Stable Windows x64 installer for XP Enhance v${{ steps.app_version.outputs.version }}. Commit: ${{ github.sha }}."
           files: |
             src-tauri/target/release/bundle/nsis/*.exe
           prerelease: false
