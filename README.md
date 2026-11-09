@@ -30,9 +30,21 @@ The included script is from `SmusiJarviss/RXP-XP12-Enhancer`, which identifies t
 
 XP Enhance imports a ReShade `.ini` preset and copies it to the X-Plane directory. Install ReShade separately from [reshade.me](https://www.reshade.me/) and select the Vulkan API for X-Plane 12. The app does not redistribute ReShade binaries or third-party shader packs. Presets may reference shader/effect packages, textures, paths, and ReShade versions that must be installed separately; therefore, no application can guarantee that every arbitrary preset works unchanged.
 
-## Frame generation
+## Frame generation (LuminaXP)
 
-Frame generation is not implemented inside XP Enhance. The Performance page can detect a LuminaXP folder and links to the community plugin page. LuminaXP is a separate beta plugin; compatibility depends on the simulator version, GPU, driver, and plugin build. XP Enhance does not bundle or redistribute it.
+The Performance page provides an installation guide, verifies the LuminaXP manager and plugin binary, and can launch `Resources/plugins/LuminaXP/LuminaXP.exe` when installed. XP Enhance does not download, mirror, bundle, or redistribute LuminaXP; obtain the package from its [official X-Plane.org download page](https://forums.x-plane.org/files/file/101816-xp12-luminaxp-dlss-dlaa-frame-generation-windows-beta/).
+
+Installation:
+1. Close X-Plane 12 completely.
+2. Download the current Windows package from the official page.
+3. Remove the old `Resources/plugins/LuminaXP` folder before updating; do not merge different plugin versions.
+4. Extract the new `LuminaXP` folder directly into `Resources/plugins/`.
+5. If the plugin instructions request first-run registration, run `LuminaXP.exe` once, then launch X-Plane.
+6. Open `Plugins > LuminaXP Graphics > Graphics Settings` in the simulator and choose a mode supported by the GPU and current plugin release.
+
+The current plugin listing describes NVIDIA RTX 40/50 multi-frame generation, RTX 20/30 support with mode restrictions depending on the release, AMD Radeon RX 6000/7000/8000 frame generation, and Intel Arc support for temporal upscaling. It lists X-Plane 12.4.3-r2 stable and 12.4.4 beta builds for the referenced release. Check the live download page for the exact current compatibility list before installing. Windows 10/11 64-bit and Vulkan are required. Multi-monitor/VR availability has changed across releases and must be checked on the exact build. Generated frames increase display presentation rate, not the simulator's physics update rate.
+
+LuminaXP is an independent third-party plugin, not developed or endorsed by Laminar Research. It hooks into X-Plane's rendering pipeline; simulator updates can break compatibility. Remove it and retest without the plugin before attributing a crash or visual issue to X-Plane.
 
 ## Not implemented in this release
 

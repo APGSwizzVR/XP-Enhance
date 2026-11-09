@@ -48,7 +48,7 @@ struct Addon { name: String, path: String, kind: String }
 #[derive(Serialize)]
 struct ScanResult { plugins: Vec<Addon>, scenery: Vec<Addon>, aircraft: Vec<Addon>, xplane_found: bool, version: Option<String> }
 #[derive(Serialize)]
-struct IntegrationStatus { flywithlua_installed: bool, visual_script_installed: bool, reshade_detected: bool, lumina_detected: bool }
+struct IntegrationStatus { flywithlua_installed: bool, visual_script_installed: bool, reshade_detected: bool, lumina_detected: bool, lumina_manager_found: bool, lumina_plugin_binary_found: bool }
 
 fn settings_file(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
@@ -114,8 +114,11 @@ fn get_integration_status(path: String) -> Result<IntegrationStatus, String> {
     if !valid_xplane(&root) { return Err("The configured X-Plane folder is not valid.".into()); }
     let fwl = flywithlua_dir(&root);
     let script_installed = fwl.as_ref().map(|dir| dir.join("Scripts/rxp-xp12-enhancer.lua").is_file()).unwrap_or(false);
-    let lumina = root.join("Resources/plugins/LuminaXP").is_dir() || root.join("Resources/plugins/LuminaXP/win.xpl").is_file();
-    Ok(IntegrationStatus { flywithlua_installed: fwl.is_some(), visual_script_installed: script_installed, reshade_detected: reshade_found(&root), lumina_detected: lumina })
+    let lumina_dir = root.join("Resources/plugins/LuminaXP");
+    let lumina_manager_found = lumina_dir.join("LuminaXP.exe").is_file();
+    let lumina_plugin_binary_found = [lumina_dir.join("win.xpl"), lumina_dir.join("64/win.xpl"), lumina_dir.join("lin.xpl")].iter().any(|p| p.is_file());
+    let lumina = lumina_dir.is_dir() && (lumina_manager_found || lumina_plugin_binary_found);
+    Ok(IntegrationStatus { flywithlua_installed: fwl.is_some(), visual_script_installed: script_installed, reshade_detected: reshade_found(&root), lumina_detected: lumina, lumina_manager_found, lumina_plugin_binary_found })
 }
 fn backup_existing(path: &Path) -> Result<(), String> {
     if !path.exists() { return Ok(()); }
@@ -180,6 +183,16 @@ fn deploy_reshade_preset(path: String, preset: String) -> Result<String, String>
     Ok("Preset copied to the X-Plane folder as XPEnhance-ReShade.ini. Select it in the ReShade overlay after installing the official Vulkan runtime and all referenced shader packages.".into())
 }
 #[tauri::command]
+fn launch_lumina_manager(path: String) -> Result<String, String> {
+    let root = PathBuf::from(path.trim());
+    if !valid_xplane(&root) { return Err("The X-Plane directory is not valid.".into()); }
+    let manager = root.join("Resources/plugins/LuminaXP/LuminaXP.exe");
+    if !manager.is_file() { return Err("LuminaXP.exe was not found. Download the official LuminaXP package and extract its LuminaXP folder into Resources/plugins first.".into()); }
+    std::process::Command::new(&manager).current_dir(manager.parent().unwrap_or(&root)).spawn().map_err(|e| format!("Could not launch LuminaXP manager: {e}"))?;
+    Ok("LuminaXP manager launched. Its settings and diagnostics are provided by the plugin developer.".into())
+}
+
+#[tauri::command]
 fn open_external(url: String) -> Result<(), String> {
     if !(url.starts_with("https://") || url.starts_with("http://")) { return Err("Only HTTP and HTTPS links can be opened.".into()); }
     #[cfg(target_os = "windows")]
@@ -194,7 +207,7 @@ fn open_external(url: String) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_settings, save_settings, detect_xplane, scan_xplane, get_integration_status, sync_visual_settings, install_visual_integration, deploy_reshade_preset, open_external])
+        .invoke_handler(tauri::generate_handler![get_settings, save_settings, detect_xplane, scan_xplane, get_integration_status, sync_visual_settings, install_visual_integration, deploy_reshade_preset, launch_lumina_manager, open_external])
         .run(tauri::generate_context!())
         .expect("error while running XP Enhance");
 }
