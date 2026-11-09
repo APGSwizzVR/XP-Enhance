@@ -1,62 +1,62 @@
-# XP Enhance 0.4.0
+# XP Enhance 0.5.0
 
-XP Enhance is a Windows desktop companion for X-Plane 12. This update replaces the previous aviation-instrument UI with a dark iOS-inspired liquid-glass interface and adds a real, optional FlyWithLua bridge for supported visual settings.
+XP Enhance is a Windows desktop companion for X-Plane 12. It provides an iOS 27-inspired liquid-glass control surface for supported simulator visual settings, third-party add-on discovery, ReShade preset management, system telemetry and an optional in-simulator FPS overlay.
 
-## Included in 0.4.0
+## Included in 0.5.0
 
-- Complete liquid-glass interface redesign and iOS-style 51×31 switches.
-- Performance, Balanced, Realistic and Cinematic profiles.
-- Persistent local settings and a 0–100 visual-intensity control.
-- Optional installation of the MIT-licensed RXP X-Plane 12 Enhancer Lua script into an existing FlyWithLua NG installation.
-- Simulator settings synchronization to the enhancer's `rxp-xp12-enhancer.ini` file.
-- Supported bridge controls: exposure/tone mapping, global illumination, night lighting, extended shadow distance, SSAO, water-wave parameters, rain effects, bloom-artifact reduction and FSR sharpening.
-- Safe backup of existing script, INI and ReShade preset files before replacement.
-- ReShade preset import and copy to the X-Plane folder as `XPEnhance-ReShade.ini`.
-- Detection of FlyWithLua, ReShade and LuminaXP folders/configuration.
-- Read-only inventory scans for plugins, scenery and aircraft.
+- Redesigned translucent, layered interface with rounded glass panels, ambient lighting, compact navigation and responsive controls.
+- Performance, Balanced, Realistic and Cinematic visual profiles, a master intensity control and feature switches.
+- Optional FlyWithLua NG visual bridge using the bundled MIT-licensed RXP XP12 Enhancer script. Supported controls include exposure/tone mapping, global illumination, night lighting, extended shadow distance, SSAO, water-wave parameters, rain effects, bloom-artifact reduction and FSR sharpening.
+- Optional XP Enhance FPS overlay installed into the FlyWithLua Scripts folder. The counter reads `sim/operation/misc/frame_rate_period` and draws the live FPS value inside X-Plane. Enable it in Settings and choose a screen corner. Reload FlyWithLua scripts after installation or changes.
+- Live METAR briefing lookup by ICAO station through the NOAA AviationWeather API (read-only briefing).
+- Direct X-Plane weather preset controls through the simulator local Web API: Clear, VFR Few/Scattered/Broken/Marginal, IFR Non-precision/Precision, Convective and Large-cell Storms, plus a real-weather mode request.
+- CPU and system-memory telemetry. NVIDIA GPU utilization, temperature and VRAM are shown when `nvidia-smi` is available. AMD and Intel GPU telemetry are not currently exposed.
+- Detection and publisher links for Active Sky XP 12, VisualXP, X-Clouds Enhancer, Ultimate Water Enhancement, Immersive Lights and LuminaXP. XP Enhance does not redistribute their installers.
+- ReShade INI import, deployment, runtime detection and configured shader search-path checks.
+- Local settings persistence, X-Plane add-on inventory scanning, backups before integration-file replacement, and GitHub release update checking.
 
-## Installing the X-Plane visual bridge
+## FPS overlay setup
 
-1. Install FlyWithLua NG for X-Plane 12 using its official distribution.
-2. Close X-Plane 12.
-3. In XP Enhance, set the X-Plane folder and open **Integrations**.
-4. Select **Install visual bridge**. XP Enhance copies the Lua script, license and generated settings INI into `Resources/plugins/FlyWithLua/Scripts`.
-5. Start X-Plane and reload FlyWithLua scripts (or restart the simulator) to apply the settings.
-6. Changes made in XP Enhance update the INI file. Reload FlyWithLua scripts in X-Plane to apply changes to an already running session.
+1. Install FlyWithLua NG for X-Plane 12 from its official distribution.
+2. Set and scan your X-Plane 12 installation folder in XP Enhance.
+3. Open Performance and select **Install FPS overlay** (or install the full visual bridge from Integrations).
+4. Open Settings, enable **Show FPS in X-Plane 12**, and choose a screen corner.
+5. In X-Plane, reload FlyWithLua scripts or restart the simulator.
 
-The included script is from `SmusiJarviss/RXP-XP12-Enhancer`, which identifies the script as an MIT-licensed modification of the Reality XP enhancer. The license is included beside the script. The upstream author reports testing against X-Plane 12.4.0 and warns that newer simulator versions may behave differently. It uses private X-Plane rendering datarefs, which Laminar Research may change. Use at your own risk and keep backups.
+The overlay is drawn by FlyWithLua inside the simulator. It is not a desktop always-on-top window. It uses the simulator frame-time dataref and displays the reciprocal as FPS.
+
+## Weather and third-party integrations
+
+The METAR panel retrieves the latest available station report from AviationWeather.gov. It does not write weather data into X-Plane. Active Sky XP 12 advertises a third-party API, but XP Enhance 0.5.0 only detects the installation and links to the publisher; direct Active Sky API control is not enabled yet.
+
+Third-party add-on cards provide installation detection and official publisher/download links. They do not install paid or third-party files automatically. Check each add-on's current X-Plane version, GPU, Vulkan, VR and multi-monitor compatibility before installing it. Avoid running multiple plugins that modify the same private rendering datarefs without checking compatibility.
 
 ## ReShade
 
-XP Enhance imports a ReShade `.ini` preset and copies it to the X-Plane directory. Install ReShade separately from [reshade.me](https://www.reshade.me/) and select the Vulkan API for X-Plane 12. The app does not redistribute ReShade binaries or third-party shader packs. Presets may reference shader/effect packages, textures, paths, and ReShade versions that must be installed separately; therefore, no application can guarantee that every arbitrary preset works unchanged.
+XP Enhance imports ReShade `.ini` files and copies them into the X-Plane directory. The dependency check verifies configured effect and texture search directories. It cannot guarantee that every referenced shader exists or that every effect is compatible with the installed ReShade/Vulkan runtime. Install ReShade and shader packs separately from their respective publishers.
 
-## Frame generation (LuminaXP)
+## Performance telemetry
 
-The Performance page provides an installation guide, verifies the LuminaXP manager and plugin binary, and can launch `Resources/plugins/LuminaXP/LuminaXP.exe` when installed. XP Enhance does not download, mirror, bundle, or redistribute LuminaXP; obtain the package from its [official X-Plane.org download page](https://forums.x-plane.org/files/file/101816-xp12-luminaxp-dlss-dlaa-frame-generation-windows-beta/).
+CPU and memory values are system-wide, not X-Plane-process-only. NVIDIA GPU values require the `nvidia-smi` executable supplied with a compatible NVIDIA driver. If it is unavailable, GPU values are shown as unavailable. This release does not provide AMD/Intel GPU telemetry or simulator frametime graphs.
 
-Installation:
-1. Close X-Plane 12 completely.
-2. Download the current Windows package from the official page.
-3. Remove the old `Resources/plugins/LuminaXP` folder before updating; do not merge different plugin versions.
-4. Extract the new `LuminaXP` folder directly into `Resources/plugins/`.
-5. If the plugin instructions request first-run registration, run `LuminaXP.exe` once, then launch X-Plane.
-6. Open `Plugins > LuminaXP Graphics > Graphics Settings` in the simulator and choose a mode supported by the GPU and current plugin release.
+## Visual bridge compatibility
 
-The current plugin listing describes NVIDIA RTX 40/50 multi-frame generation, RTX 20/30 support with mode restrictions depending on the release, AMD Radeon RX 6000/7000/8000 frame generation, and Intel Arc support for temporal upscaling. It lists X-Plane 12.4.3-r2 stable and 12.4.4 beta builds for the referenced release. Check the live download page for the exact current compatibility list before installing. Windows 10/11 64-bit and Vulkan are required. Multi-monitor/VR availability has changed across releases and must be checked on the exact build. Generated frames increase display presentation rate, not the simulator's physics update rate.
+The bundled RXP enhancer is a community MIT-licensed Lua script that uses X-Plane private rendering datarefs. Its upstream author reports testing against X-Plane 12.4.0. Private datarefs may change in later simulator versions. Keep backups and verify the exact simulator build. The bridge is not a custom renderer and does not replace X-Plane's cloud, weather, water or lighting engines.
 
-LuminaXP is an independent third-party plugin, not developed or endorsed by Laminar Research. It hooks into X-Plane's rendering pipeline; simulator updates can break compatibility. Remove it and retest without the plugin before attributing a crash or visual issue to X-Plane.
+## Update mechanism
 
-## Not implemented in this release
+The app checks the latest stable GitHub release at startup. When a newer release is found, it displays an update banner. On Windows, the app downloads the installer, checks its SHA-256 digest against GitHub release metadata, and launches the installer. This is an integrity check against GitHub's release metadata, not a code-signing certificate or protection against a compromised release account.
 
-- A replacement weather engine or REX Atmos Core-equivalent cloud engine.
-- New cloud rendering, cloud texture generation, or live weather injection.
-- New water-reflection rendering passes beyond the parameters exposed by the bundled script.
-- A custom in-game shader renderer or universal shader injector beyond ReShade's own Vulkan runtime.
-- Native frame generation inside XP Enhance.
-- Guaranteed support for every ReShade preset or shader dependency.
-- Live FPS/GPU/CPU telemetry.
+## Not included / limitations
 
-These are deliberately shown as unconnected/external capabilities rather than presented as working features.
+- No custom cloud-rendering engine, volumetric cloud shader replacement or cloud-texture generator.
+- No new water-reflection rendering pass beyond controls exposed by the simulator bridge or external add-ons.
+- No native frame-generation engine; LuminaXP owns its frame-generation controls inside X-Plane.
+- No direct Active Sky XP 12 API control in this release. Weather preset writes are limited to X-Plane’s documented local Web API and supported regional preset dataref.
+- No AMD/Intel GPU telemetry, and no per-process X-Plane CPU/GPU breakdown.
+- No guarantee that every ReShade preset or third-party plugin will work with every X-Plane build.
+
+These limitations are explicit because a desktop companion cannot safely replace X-Plane's renderer or take ownership of proprietary third-party plugin APIs without their documented interfaces and compatibility testing.
 
 ## Build
 
