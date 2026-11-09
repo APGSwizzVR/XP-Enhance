@@ -15,7 +15,7 @@ XP Enhance is a Windows desktop workspace for configuring and saving a personal 
 
 ## Live performance telemetry
 
-The Performance page samples automatically once per second. It shows system CPU and memory, available memory, swap, CPU core/thread counts and frequency, running process count, X-Plane process CPU/memory, and the graphics device identified by Windows. GPU load, temperature and VRAM sensors are only displayed when a supported Windows hardware counter is available.
+The Performance page samples automatically once per second. It shows system CPU and memory, available memory, swap, CPU core/thread counts and frequency, running process count, X-Plane process CPU/memory, and the graphics device identified by Windows. The current build identifies the graphics device but does not yet expose reliable GPU load, temperature or VRAM sensor readings; those fields remain unavailable rather than fabricated.
 
 X-Plane FPS and frame-time readings are read from the simulator's local Web API. This requires X-Plane 12.1.1 or newer, a loaded flight, and incoming traffic enabled in Settings → Network. The default API port is 8086. The separate in-simulator FPS switch invokes X-Plane's own built-in FPS display command; it is independent of the desktop Performance tab.
 
