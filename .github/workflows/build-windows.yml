@@ -34,10 +34,13 @@ jobs:
       - name: Publish Windows x64
         run: dotnet publish XPEnhance.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output publish
 
-      - name: Upload Windows build
-        uses: actions/upload-artifact@v4
+      - name: Publish downloadable GitHub release
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
         with:
-          name: XP-Enhance-Windows-x64
-          path: publish/
-          if-no-files-found: error
-          retention-days: 30
+          tag_name: build-${{ github.run_number }}
+          name: XP Enhance build ${{ github.run_number }}
+          body: Automated Windows x64 build from commit ${{ github.sha }}.
+          files: publish/*
+          prerelease: true
+          make_latest: false
