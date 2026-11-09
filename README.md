@@ -1,26 +1,32 @@
 # XP Enhance
 
-Windows desktop companion for X-Plane 12.
+XP Enhance is a Windows desktop control centre for X-Plane 12 visual enhancement profiles.
 
-## Version 0.1.0 — Foundation
-- WPF desktop application with dark navigation layout.
-- Manual X-Plane 12 folder selection and validation.
-- Visual profile controls with saved slider/toggle values.
-- Preset selection.
-- Settings stored in %APPDATA%\\XPEnhance.
-- GitHub Actions Windows x64 build and release workflow.
+## Current foundation
 
-## Not implemented yet
-The foundation build does not modify X-Plane rendering, install ReShade or FlyWithLua, install community addons, or provide DLSS/neural rendering. Visual controls currently save configuration values only.
+- Rust application backend with Tauri 2.
+- Desktop interface built with TypeScript, Vite and the Windows WebView2 runtime.
+- Local settings persistence in the user's application configuration directory.
+- Visual feature toggles, realism intensity and selectable presets.
+- ReShade INI import and local storage.
+- X-Plane installation path setting.
+- GitHub Actions builds a Windows NSIS installer and publishes it as a GitHub prerelease.
 
-## Build
-Requires Windows and the .NET 10 SDK:
-```powershell
-dotnet restore XPEnhance.csproj
-dotnet run --project XPEnhance.csproj
-dotnet publish XPEnhance.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
+## Development
+
+Requirements: Node.js 22, Rust stable, and the Windows C++ build tools / WebView2 prerequisites for Windows development.
+
+```sh
+npm install
+npm run tauri -- dev
 ```
 
-Push to main to trigger GitHub Actions. Download the build from the workflow run's Artifacts section. Push a tag such as v0.1.0 to publish a GitHub Release ZIP.
+Build the Windows installer:
 
-Future installers must validate archive paths, verify downloads, preserve existing files, back up conflicts and support rollback.
+```sh
+npm run tauri -- build --bundles nsis
+```
+
+## Integration status
+
+The current release is the desktop foundation. Settings and profile storage work locally, but the visual options are not yet connected to X-Plane's rendering pipeline. ReShade INI files are imported and stored; shader injection and automatic add-on installation are future integration work.

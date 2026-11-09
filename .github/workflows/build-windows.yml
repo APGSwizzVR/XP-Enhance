@@ -2,11 +2,9 @@ name: Build XP Enhance
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -14,33 +12,37 @@ permissions:
 
 jobs:
   build:
-    name: Build Windows application
+    name: Build Windows desktop app
     runs-on: windows-latest
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Install .NET SDK
-        uses: actions/setup-dotnet@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
         with:
-          dotnet-version: 8.0.x
+          node-version: 22
+          cache: npm
 
-      - name: Restore Windows x64 dependencies
-        run: dotnet restore XPEnhance.csproj --runtime win-x64
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
 
-      - name: Build
-        run: dotnet build XPEnhance.csproj --configuration Release --runtime win-x64 --no-restore
+      - name: Install frontend dependencies
+        run: npm install
 
-      - name: Publish Windows x64
-        run: dotnet publish XPEnhance.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output publish
+      - name: Build Tauri application
+        run: npm run tauri -- build --bundles nsis
 
-      - name: Publish downloadable GitHub release
+      - name: Publish Windows installer
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: XP Enhance build ${{ github.run_number }}
-          body: Automated Windows x64 build from commit ${{ github.sha }}.
-          files: publish/*
+          body: Automated Windows x64 installer for commit ${{ github.sha }}.
+          files: |
+            src-tauri/target/release/bundle/nsis/*.exe
           prerelease: true
           make_latest: false

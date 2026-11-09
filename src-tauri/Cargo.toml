@@ -1,0 +1,18 @@
+[package]
+name = "xp-enhance"
+version = "0.2.0"
+description = "Visual enhancement control centre for X-Plane 12"
+authors = ["APGSwizzVR"]
+edition = "2021"
+
+[lib]
+name = "xp_enhance_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
