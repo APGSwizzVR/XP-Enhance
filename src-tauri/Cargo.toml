@@ -1,7 +1,7 @@
 [package]
 name = "xp-enhance"
 version = "0.5.0"
-description = "Liquid glass X-Plane 12 visual environment control centre"
+description = "Graphite glass X-Plane 12 visual environment control centre"
 authors = ["APGSwizzVR"]
 edition = "2021"
 
