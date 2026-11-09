@@ -137,7 +137,7 @@ fn get_performance_snapshot(xplane_api_port:u16)->Result<PerformanceSnapshot,Str
     let memory_available_mb=system.available_memory()/(1024*1024);
     let swap_used_mb=system.used_swap()/(1024*1024);
     let swap_total_mb=system.total_swap()/(1024*1024);
-    let cpu_core_count=System::physical_core_count();
+    let cpu_core_count=system.physical_core_count();
     let logical_thread_count=system.cpus().len();
     let cpu_frequency_mhz=system.cpus().first().map(|c|c.frequency());
     let process_count=system.processes().len();
