@@ -383,7 +383,7 @@ fn open_external(url: String) -> Result<(), String> {
     Ok(())
 }
 
-\n#[derive(Serialize)]
+#[derive(Serialize)]
 struct UpdateInfo { version: String, current_version: String }
 
 fn latest_release_details() -> Result<(String, String, String), String> {
