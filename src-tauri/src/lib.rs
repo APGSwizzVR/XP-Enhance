@@ -244,8 +244,6 @@ fn launch_lumina_manager(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-
-#[tauri::command]
 fn install_fps_overlay(path: String, settings: AppSettings) -> Result<String, String> {
     let root = PathBuf::from(path.trim());
     if !valid_xplane(&root) { return Err("The X-Plane directory is not valid.".into()); }
@@ -273,7 +271,7 @@ fn xplane_dataref_id(client: &reqwest::blocking::Client, port: u16, name: &str) 
     let payload: Value = response.json().map_err(|e| format!("Could not parse X-Plane dataref response: {e}"))?;
     payload.get("data").and_then(Value::as_array).and_then(|rows| rows.iter().find(|row| row.get("name").and_then(Value::as_str) == Some(name)))
         .and_then(|row| row.get("id")).and_then(Value::as_u64)
-        .ok_or_else(|| format!("X-Plane does not expose the required dataref '{name}'. Check your simulator version."))?
+        .ok_or_else(|| format!("X-Plane does not expose the required dataref '{name}'. Check your simulator version."))
 }
 fn set_xplane_dataref(port: u16, name: &str, value: i64) -> Result<(), String> {
     if port == 0 { return Err("X-Plane Web API port must be between 1 and 65535.".into()); }
@@ -372,6 +370,7 @@ fn validate_reshade_preset(path: String, preset: String) -> Result<ReshadeReport
     Ok(ReshadeReport { sections, effect_search_paths, texture_search_paths, missing_paths })
 }
 
+#[tauri::command]
 fn open_external(url: String) -> Result<(), String> {
     if !(url.starts_with("https://") || url.starts_with("http://")) { return Err("Only HTTP and HTTPS links can be opened.".into()); }
     #[cfg(target_os = "windows")]
