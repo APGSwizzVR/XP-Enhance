@@ -1,0 +1,12 @@
+<Window x:Class="XPEnhance.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="XP Enhance" Height="800" Width="1280" MinHeight="680" MinWidth="1050" WindowStartupLocation="CenterScreen" Background="{StaticResource BackgroundBrush}">
+<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="235"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+<Border Background="#151A21" BorderBrush="#29313D" BorderThickness="0,0,1,0" Padding="18"><DockPanel>
+<StackPanel DockPanel.Dock="Top"><TextBlock Text="XP ENHANCE" FontSize="20" FontWeight="Bold" Margin="4,12,0,28"/><TextBlock Text="WORKSPACE" Foreground="#9AA6B5" FontSize="10" Margin="4,0,0,10"/>
+<Button Content="Dashboard" Tag="Dashboard" Click="Nav_Click"/><Button Content="Visual Settings" Tag="Visual Settings" Click="Nav_Click"/><Button Content="Presets" Tag="Presets" Click="Nav_Click"/><Button Content="ReShade" Tag="ReShade" Click="Nav_Click"/><Button Content="AI Graphics" Tag="AI Graphics" Click="Nav_Click"/><Button Content="Weather" Tag="Weather" Click="Nav_Click"/><Button Content="Scenery" Tag="Scenery" Click="Nav_Click"/><Button Content="Community Addons" Tag="Community Addons" Click="Nav_Click"/><Button Content="Installed Addons" Tag="Installed Addons" Click="Nav_Click"/><Button Content="Performance" Tag="Performance" Click="Nav_Click"/></StackPanel>
+<StackPanel DockPanel.Dock="Bottom"><Button Content="Settings" Tag="Settings" Click="Nav_Click"/><TextBlock Text="VERSION 0.1.0" Foreground="#9AA6B5" FontSize="10" Margin="4,15,0,0"/></StackPanel>
+</DockPanel></Border>
+<Grid Grid.Column="1" Margin="30"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+<StackPanel Margin="0,0,0,22"><TextBlock x:Name="PageTitle" Text="Dashboard" FontSize="28" FontWeight="SemiBold"/><TextBlock x:Name="PageSubtitle" Text="Your X-Plane 12 enhancement workspace." Foreground="#9AA6B5" Margin="0,5,0,0"/></StackPanel>
+<ScrollViewer Grid.Row="1"><ContentControl x:Name="PageContent"/></ScrollViewer>
+<Border Grid.Row="2" BorderBrush="#29313D" BorderThickness="0,1,0,0" Padding="0,12,0,0"><TextBlock x:Name="FooterStatus" Text="Ready · Settings are stored locally" Foreground="#9AA6B5" FontSize="11"/></Border>
+</Grid></Grid></Window>
